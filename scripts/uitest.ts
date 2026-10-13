@@ -48,11 +48,14 @@ async function boot(fetchImpl: any) {
   return { win, doc };
 }
 
-// ---- scénario 1 : graphe présent (API ok)
+// ---- scénario 1 : graphe présent (API ok, avec le token de page comme le proxy)
 {
+  let pageToken = "";
+  try { pageToken = (await import("node:fs")).readFileSync(`/home/agent/.open-bot/pages/flow-cartographer.token`, "utf-8").trim(); } catch {}
   const realFetch = async (url: any, init: any) => {
     const u = String(url).startsWith("http") ? String(url) : BASE + "/" + String(url).replace(/^\//, "");
-    return fetch(u, init);
+    const headers = { ...(init?.headers || {}), ...(pageToken ? { "x-open-bot-page-token": pageToken } : {}) };
+    return fetch(u, { ...init, headers });
   };
   const { win, doc } = await boot(realFetch);
   await (win as any).happyDOM.waitUntilComplete();
@@ -96,11 +99,21 @@ async function boot(fetchImpl: any) {
   check("chips restent vides", doc.getElementById("chips").children.length === 0);
 }
 
-// ---- scénario 3 : build endpoint
+// ---- scénario 3 : build endpoint + refus sans token
 {
-  const r = await fetch(BASE + "/api/build", { method: "POST" });
+  let pageToken = "";
+  try { pageToken = (await import("node:fs")).readFileSync(`/home/agent/.open-bot/pages/flow-cartographer.token`, "utf-8").trim(); } catch {}
+  const r = await fetch(BASE + "/api/build", { method: "POST", headers: pageToken ? { "x-open-bot-page-token": pageToken } : {} });
   const j = await r.json();
   check("api/build reconstruit", j.ok === true && j.counts && j.counts.cron >= 10, JSON.stringify(j.counts || {}));
+  if (pageToken) {
+    const anon = await fetch(BASE + "/api/graph");
+    check("api sans token refusée", anon.status === 403, `status ${anon.status}`);
+    const g2 = await (await fetch(BASE + "/api/graph", { headers: { "x-open-bot-page-token": pageToken } })).json();
+    const cronNode = (g2.nodes || []).find((n: any) => n.type === "cron");
+    check("pas de prompt brut dans le graphe", cronNode && cronNode.data && cronNode.data.message === undefined && cronNode.data.script === undefined,
+      JSON.stringify(cronNode?.data || {}).slice(0, 120));
+  }
 }
 const fs = await import("node:fs");
 check("graphe fichier à jour", JSON.parse(fs.readFileSync("/home/agent/.open-bot/pages-data/flow-cartographer/graph.json", "utf-8")).ok === true);

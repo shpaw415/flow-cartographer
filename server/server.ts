@@ -21,8 +21,9 @@ function jsonRes(obj: any, status = 200) {
 
 function tokenOk(req: Request): boolean {
   if (!TOKEN) return true;
-  const got = req.headers.get("x-open-bot-page-token");
-  return !got || got === TOKEN; // rejet seulement si un token est fourni et faux
+  // strict : sans le bon token, pas d'accès aux données (le proxy du dashboard
+  // transmet x-open-bot-page-token ; un client direct doit le présenter aussi)
+  return req.headers.get("x-open-bot-page-token") === TOKEN;
 }
 
 async function buildGraph(): Promise<any> {
@@ -87,7 +88,7 @@ Bun.serve({
       return jsonRes({ ok: false, erreur: "fichier statique introuvable : " + name }, 404);
     }
 
-    if (!tokenOk(req)) return jsonRes({ ok: false, erreur: "token invalide" }, 403);
+    if (!tokenOk(req)) return jsonRes({ ok: false, erreur: "accès refusé : token de page manquant ou invalide" }, 403);
 
     if (path === "/api/graph") {
       try {

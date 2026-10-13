@@ -34,6 +34,11 @@ consulte** — tout ce qu'il faut pour déboguer un chemin ou faire du nettoyage
 | Personnalités | `ob-persona list` |
 | Mémoires | URI `viking://…` citées dans les prompts/scripts des crons |
 
+**Vie privée** : les prompts et scripts des crons ne sont jamais persistés dans
+le graphe — seulement les liens qu'ils créent (outils, plugins, skills, URI
+mémoires), leur longueur et leurs métadonnées. Les endpoints `/api/*` de la
+page exigent le token de page quand il est configuré.
+
 Aucune clé de coffre, aucun réglage requis.
 
 ## Développement

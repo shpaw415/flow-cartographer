@@ -20,7 +20,7 @@ const manifest = {
   $schema: "/home/agent/.config/opencode/skills/plugin/open-bot.plugin.schema.json",
   id: "flow-cartographer",
   name: "Cartographe de flux",
-  version: "0.1.0",
+  version: "0.1.1",
   description:
     "Carte des flux open-bot : analyse les cron-jobs, les skills (locales + OpenViking) et les plugins installés, puis affiche un nodegraph interactif — quand un cron s'exécute, quels outils il appelle, quels plugins il lit ou modifie, quelles mémoires il consulte. Requêtes who/what, suggestions de nettoyage, cron quotidien silencieux et personnalité Cartographe pour guider les modifications de chemins.",
   author: "Justin Hallé",

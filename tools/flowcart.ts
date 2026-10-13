@@ -93,6 +93,10 @@ class Graph {
 
 // ---------- sources ----------
 
+// textes bruts des crons : transient, utilisés pour l'analyse en mémoire,
+// JAMAIS écrits dans le graphe (les prompts/scripts peuvent contenir des secrets)
+const cronRawText = new Map<string, string>();
+
 async function getCrons(g: Graph): Promise<{ ok: boolean; erreur?: string }> {
   const base = process.env.OPEN_BOT_CONTROL_URL || "http://open-bot:8787";
   const token = process.env.OPEN_BOT_LLM_TOKEN || "";
@@ -107,6 +111,8 @@ async function getCrons(g: Graph): Promise<{ ok: boolean; erreur?: string }> {
       const id = `cron:${j.id}`;
       const sched = fmtSchedule(j);
       const lastErr = j.lastError ? String(j.lastError).slice(0, 200) : null;
+      // texte brut gardé en mémoire seulement (analyse), jamais persisté
+      cronRawText.set(id, `${j.message || ""}\n${j.script || ""}`);
       g.node(
         id,
         "cron",
@@ -125,8 +131,10 @@ async function getCrons(g: Graph): Promise<{ ok: boolean; erreur?: string }> {
           lastError: lastErr,
           model: j.providerId && j.modelId ? `${j.providerId}/${j.modelId}` : null,
           personaId: j.personaId ?? null,
-          message: j.message ?? null,
-          script: j.script ?? null,
+          // redaction : ni le prompt ni le script ne sont stockés — seulement leur forme
+          messageLength: (j.message || "").length,
+          scriptLength: (j.script || "").length,
+          hasScript: !!j.script,
         },
       );
     }
@@ -322,7 +330,7 @@ function analyze(g: Graph, pluginIds: string[], toolNames: string[]) {
   // contenu des crons → outils / plugins / skills / mémoires / modèle / persona
   for (const n of g.nodes.values()) {
     if (n.type !== "cron") continue;
-    const text = `${n.data?.message || ""}\n${n.data?.script || ""}`;
+    const text = cronRawText.get(n.id) || "";
     for (const t of toolNames) {
       const c = countMatches(text, t);
       if (c > 0) g.edge(n.id, `tool:${t}`, "appelle", c);
