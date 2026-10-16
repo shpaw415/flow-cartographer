@@ -45,49 +45,42 @@ async function buildGraph(): Promise<any> {
   }
 }
 
-// le payload installé est PRÉFIXÉ (ob-plugin-<id>-index.html) ; le nom nu ne
-// reste que pour l'exécution depuis le checkout
-const INDEX_CANDIDATES = [
-  join(import.meta.dir, `ob-plugin-${PLUGIN_ID}-index.html`),
-  join(import.meta.dir, "index.html"),
-];
-function indexHtml(): string {
-  for (const p of INDEX_CANDIDATES) {
-    if (existsSync(p)) return readFileSync(p, "utf-8");
-  }
-  return "<h1>flow-cartographer</h1><p>index.html manquant</p>";
+// le bundle UI figé arrive via OPEN_BOT_PAGE_UI (install marketplace) ;
+// le checkout local / preview importe index.html en direct (bun --hot).
+// Valeur statique : l'import HTML doit être résolu AVANT Bun.serve.
+const routes = process.env.OPEN_BOT_PAGE_UI
+  ? {
+      "/": () => htmlRes(process.env.OPEN_BOT_PAGE_UI as string),
+    }
+  : { "/": await import("./index.html").then((m) => m.default) };
+
+function htmlRes(path: string) {
+  return new Response(Bun.file(path), {
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
+  });
 }
 
 Bun.serve({
   port: PORT,
+  routes,
   async fetch(req) {
     const url = new URL(req.url);
     const path = url.pathname;
 
     if (path === "/healthz") return new Response("ok");
 
-    if (path === "/" || path === "/index.html") {
-      try {
-        return new Response(indexHtml(), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
-      } catch (e: any) {
-        return new Response(`index.html manquant : ${e?.message || e}`, { status: 500 });
-      }
+    if (path === "/index.html") {
+      return htmlRes(process.env.OPEN_BOT_PAGE_UI || join(import.meta.dir, "index.html"));
     }
 
     if (path.startsWith("/static/")) {
       const name = path.replace("/static/", "").replace(/[^a-zA-Z0-9._-]/g, "");
-      // payload installé : fichiers préfixés à côté du serveur ; checkout : libs dans server/vendor/
-      const candidates = [
-        join(import.meta.dir, `ob-plugin-${PLUGIN_ID}-${name}`),
-        join(import.meta.dir, name),
-        join(import.meta.dir, "vendor", name),
-      ];
-      for (const f of candidates) {
-        if (existsSync(f)) {
-          return new Response(readFileSync(f), {
-            headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "max-age=300" },
-          });
-        }
+      // checkout : libs dans server/static/ (l'install figé inline tout dans le bundle)
+      const f = join(import.meta.dir, "static", name);
+      if (name && existsSync(f)) {
+        return new Response(readFileSync(f), {
+          headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "max-age=300" },
+        });
       }
       return jsonRes({ ok: false, erreur: "fichier statique introuvable : " + name }, 404);
     }

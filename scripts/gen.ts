@@ -20,7 +20,7 @@ const manifest = {
   $schema: "/home/agent/.config/opencode/skills/plugin/open-bot.plugin.schema.json",
   id: "flow-cartographer",
   name: "Cartographe de flux",
-  version: "0.1.2",
+  version: "0.1.3",
   description:
     "Carte des flux open-bot : analyse les cron-jobs, les skills (locales + OpenViking) et les plugins installés, puis affiche un nodegraph interactif — quand un cron s'exécute, quels outils il appelle, quels plugins il lit ou modifie, quelles mémoires il consulte. Requêtes who/what, suggestions de nettoyage, cron quotidien silencieux et personnalité Cartographe pour guider les modifications de chemins.",
   author: "shpaw415",
@@ -30,15 +30,15 @@ const manifest = {
   tools: [{ name: "flowcart", content: tool }],
   files: [
     { name: "server.ts", source: "server/server.ts", exec: true },
-    { name: "index.html", source: "server/index.html" },
-    // libs vendues (le navigateur du dashboard ne joint pas toujours les CDN)
-    { name: "vendor-cytoscape.js", source: "server/vendor/vendor-cytoscape.js" },
-    { name: "vendor-dagre.js", source: "server/vendor/vendor-dagre.js" },
-    { name: "vendor-cytoscape-dagre.js", source: "server/vendor/vendor-cytoscape-dagre.js" },
-    { name: "vendor-cytoscape-fcose.js", source: "server/vendor/vendor-cytoscape-fcose.js" },
+    { name: "index.html", source: "server/index.html", exec: false },
+    // libs vendues, inlinées dans le bundle UI au install (directive 2026-10-16)
+    { name: "vendor-cytoscape.js", source: "server/static/vendor-cytoscape.js", exec: false },
+    { name: "vendor-dagre.js", source: "server/static/vendor-dagre.js", exec: false },
+    { name: "vendor-cytoscape-dagre.js", source: "server/static/vendor-cytoscape-dagre.js", exec: false },
+    { name: "vendor-cytoscape-fcose.js", source: "server/static/vendor-cytoscape-fcose.js", exec: false },
   ],
   dashboard: {
-    pages: { entry: "server.ts" },
+    pages: { entry: "server.ts", ui: "server/index.html" },
     tabs: [{ id: "flowmap", title: "Carte des flux", kind: "app", icon: "🗺️" }],
   },
   cron: [

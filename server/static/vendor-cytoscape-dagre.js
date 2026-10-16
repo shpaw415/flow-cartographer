@@ -1,13 +1,7 @@
 (function webpackUniversalModuleDefinition(root, factory) {
-	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("dagre"));
-	else if(typeof define === 'function' && define.amd)
-		define(["dagre"], factory);
-	else if(typeof exports === 'object')
-		exports["cytoscapeDagre"] = factory(require("dagre"));
-	else
-		root["cytoscapeDagre"] = factory(root["dagre"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE__4__) {
+	// build navigateur uniquement (vendored) : branche CJS/AMD retirée pour le bundler
+	root["cytoscapeDagre"] = factory(root["dagre"]);
+})((typeof self !== "undefined" ? self : this), function(__WEBPACK_EXTERNAL_MODULE__4__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
