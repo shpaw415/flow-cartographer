@@ -20,10 +20,10 @@ const manifest = {
   $schema: "/home/agent/.config/opencode/skills/plugin/open-bot.plugin.schema.json",
   id: "flow-cartographer",
   name: "Cartographe de flux",
-  version: "0.1.1",
+  version: "0.1.2",
   description:
     "Carte des flux open-bot : analyse les cron-jobs, les skills (locales + OpenViking) et les plugins installés, puis affiche un nodegraph interactif — quand un cron s'exécute, quels outils il appelle, quels plugins il lit ou modifie, quelles mémoires il consulte. Requêtes who/what, suggestions de nettoyage, cron quotidien silencieux et personnalité Cartographe pour guider les modifications de chemins.",
-  author: "Justin Hallé",
+  author: "shpaw415",
   repo: "shpaw415/flow-cartographer",
   category: "utilities",
   tags: ["nodegraph", "debug", "cron", "skills", "plugins", "cleanup"],
@@ -39,7 +39,7 @@ const manifest = {
   ],
   dashboard: {
     pages: { entry: "server.ts" },
-    tabs: [{ id: "flowmap", title: "Carte des flux", kind: "app" }],
+    tabs: [{ id: "flowmap", title: "Carte des flux", kind: "app", icon: "🗺️" }],
   },
   cron: [
     {
@@ -48,7 +48,7 @@ const manifest = {
       run: "auto",
       script: "ob-plugin-flow-cartographer-flowcart refresh",
       message:
-        "[cron: plugin:flow-cartographer:refresh] Le scan quotidien de la carte des flux a trouvé des alertes. Lance `ob-plugin-flow-cartographer-flowcart cleanup`, traite les alertes (crons en erreur, références cassées) avec Justin — info = à confirmer seulement — puis refais `build` pour valider. Réponds court.",
+        "[cron: plugin:flow-cartographer:refresh] Le scan quotidien de la carte des flux a trouvé des alertes. Lance `ob-plugin-flow-cartographer-flowcart cleanup`, traite les alertes (crons en erreur, références cassées) avec l'utilisateur — info = à confirmer seulement — puis refais `build` pour valider. Réponds court.",
     },
   ],
   personas: [{ name: "Cartographe", instruction: persona }],

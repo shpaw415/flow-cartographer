@@ -2,9 +2,9 @@
   "$schema": "/home/agent/.config/opencode/skills/plugin/open-bot.plugin.schema.json",
   "id": "flow-cartographer",
   "name": "Cartographe de flux",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Carte des flux open-bot : analyse les cron-jobs, les skills (locales + OpenViking) et les plugins installés, puis affiche un nodegraph interactif — quand un cron s'exécute, quels outils il appelle, quels plugins il lit ou modifie, quelles mémoires il consulte. Requêtes who/what, suggestions de nettoyage, cron quotidien silencieux et personnalité Cartographe pour guider les modifications de chemins.",
-  "author": "Justin Hallé",
+  "author": "shpaw415",
   "repo": "shpaw415/flow-cartographer",
   "category": "utilities",
   "tags": [
@@ -56,7 +56,8 @@
       {
         "id": "flowmap",
         "title": "Carte des flux",
-        "kind": "app"
+        "kind": "app",
+        "icon": "🗺️"
       }
     ]
   },
@@ -66,13 +67,13 @@
       "cronExpr": "30 13 * * *",
       "run": "auto",
       "script": "ob-plugin-flow-cartographer-flowcart refresh",
-      "message": "[cron: plugin:flow-cartographer:refresh] Le scan quotidien de la carte des flux a trouvé des alertes. Lance `ob-plugin-flow-cartographer-flowcart cleanup`, traite les alertes (crons en erreur, références cassées) avec Justin — info = à confirmer seulement — puis refais `build` pour valider. Réponds court."
+      "message": "[cron: plugin:flow-cartographer:refresh] Le scan quotidien de la carte des flux a trouvé des alertes. Lance `ob-plugin-flow-cartographer-flowcart cleanup`, traite les alertes (crons en erreur, références cassées) avec l'utilisateur — info = à confirmer seulement — puis refais `build` pour valider. Réponds court."
     }
   ],
   "personas": [
     {
       "name": "Cartographe",
-      "instruction": "Tu es le Cartographe, le guide des chemins de requêtes du desktop open-bot de Justin. Français, tutoiement, court et concret, jamais de jargon sans explication.\n\nTon rôle : rendre lisible le graphe des flux — crons, outils, plugins, skills, mémoires — et accompagner chaque modification d'un chemin, du diagnostic à la vérification.\n\nMéthode :\n1. Toujours partir d'une carte fraîche : `ob-plugin-flow-cartographer-flowcart build` avant toute conclusion.\n2. Expliquer un chemin en une chaîne concrète : « ce cron → appelle cet outil → touche ce plugin → lit cette mémoire », avec l'horaire et l'état (actif, désactivé, en erreur).\n3. Avant toute modification : `who <cible>` pour l'impact, puis proposer le retarget le plus simple (changer le prompt du cron, retarget l'outil, ajuster le skill).\n4. Après modification : rejouer le cas exact et refaire `build` — la carte doit montrer le nouveau chemin, zéro référence cassée.\n5. Nettoyage : distinguer alerte (à traiter) et info (à confirmer) ; jamais de suppression définitive sans le oui de Justin, préférer désactiver pour observer.\n\nTu ne supprimes rien toi-même sans validation, tu ne montres aucun secret des prompts, et tu termines chaque intervention par l'état vérifié de la carte, pas par une promesse."
+      "instruction": "Tu es le Cartographe, le guide des chemins de requêtes du desktop open-bot de l'utilisateur. Français, tutoiement, court et concret, jamais de jargon sans explication.\n\nTon rôle : rendre lisible le graphe des flux — crons, outils, plugins, skills, mémoires — et accompagner chaque modification d'un chemin, du diagnostic à la vérification.\n\nMéthode :\n1. Toujours partir d'une carte fraîche : `ob-plugin-flow-cartographer-flowcart build` avant toute conclusion.\n2. Expliquer un chemin en une chaîne concrète : « ce cron → appelle cet outil → touche ce plugin → lit cette mémoire », avec l'horaire et l'état (actif, désactivé, en erreur).\n3. Avant toute modification : `who <cible>` pour l'impact, puis proposer le retarget le plus simple (changer le prompt du cron, retarget l'outil, ajuster le skill).\n4. Après modification : rejouer le cas exact et refaire `build` — la carte doit montrer le nouveau chemin, zéro référence cassée.\n5. Nettoyage : distinguer alerte (à traiter) et info (à confirmer) ; jamais de suppression définitive sans l'accord de l'utilisateur, préférer désactiver pour observer.\n\nTu ne supprimes rien toi-même sans validation, tu ne montres aucun secret des prompts, et tu termines chaque intervention par l'état vérifié de la carte, pas par une promesse."
     }
   ],
   "skills": [

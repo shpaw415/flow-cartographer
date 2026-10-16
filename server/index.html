@@ -4,31 +4,84 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Carte des flux — flow-cartographer</title>
+<script>
+  // Thème clair par défaut ; sombre via data-theme posé AVANT le CSS (pas de flash).
+  // ?theme=light|dark outrepasse la préférence navigateur.
+  (function () {
+    var q = new URLSearchParams(location.search).get("theme");
+    var dark = q === "dark" || (q !== "light" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    if (dark) document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+    if (window.matchMedia) {
+      var mq = window.matchMedia("(prefers-color-scheme: dark)");
+      var onchange = function () {
+        if (new URLSearchParams(location.search).get("theme")) return; // override actif
+        if (mq.matches) document.documentElement.setAttribute("data-theme", "dark");
+        else document.documentElement.removeAttribute("data-theme");
+        document.dispatchEvent(new CustomEvent("themechange"));
+      };
+      if (mq.addEventListener) mq.addEventListener("change", onchange);
+      else if (mq.addListener) mq.addListener(onchange);
+    }
+  })();
+</script>
 <script src="static/vendor-cytoscape.js"></script>
 <script src="static/vendor-dagre.js"></script>
 <script src="static/vendor-cytoscape-dagre.js"></script>
 <script src="static/vendor-cytoscape-fcose.js"></script>
 <style>
+  /* Clair par défaut (variables :root) ; le thème sombre redéfinit les variables
+     via l'attribut data-theme (chaque règle préfixée, pas de nesting CSS) —
+     règle dashboard dark+light 2026-10-15. */
   :root {
-    --bg: #0a0f1a; --bg2: #0d1526; --panel: rgba(18, 26, 43, .92); --panel2: #16213a;
+    --bg: #f3f5fa; --bg2: #ffffff; --panel: rgba(255, 255, 255, .94); --panel-solid: #ffffff; --panel2: #eaeef7;
+    --border: #d4dcec; --border2: #b3c0dd; --text: #1c2740; --muted: #57678d;
+    --accent: #2c62d9; --accent2: #7645d6;
+    --header-bg: linear-gradient(180deg, #ffffffee, #f6f8fdcc);
+    --logo-shadow: 0 2px 12px #2c62d940;
+    --focus-ring: 0 0 0 3px #2c62d922;
+    --rebuild-bg: linear-gradient(135deg, #3567e21f, #7c53ff1a);
+    --rebuild-border: #93a6d9; --rebuild-hover: 0 2px 14px #2c62d933;
+    --banner-bg: #fdecec; --banner-border: #d99c9c; --banner-text: #9b2c2c;
+    --detail: #33415e; --data-bg: #eef2fa; --sugg-bg: #ffffff; --code: #2b5cb8;
+    --scroll-thumb: #b9c5e0aa;
+    --glow1: #c9d8ff66; --glow2: #e6dcff55;
+    --graph-label: #1c2740; --graph-edge: #7c8fb8; --graph-edge-opacity: 0.8;
+    --graph-hl-line: #2c62d9; --graph-hl-border: #1c2740; --graph-hl-label: #1c2740;
+    --graph-elabel: #44548a;
+  }
+  html[data-theme="dark"] {
+    --bg: #0a0f1a; --bg2: #0d1526; --panel: rgba(18, 26, 43, .92); --panel-solid: #121a2b; --panel2: #16213a;
     --border: #24304e; --border2: #31426b; --text: #e8eefb; --muted: #8fa0c4;
     --accent: #6ea8ff; --accent2: #8f6bff;
+    --header-bg: linear-gradient(180deg, #111a2ecc, #10182899);
+    --logo-shadow: 0 2px 12px #6ea8ff44;
+    --focus-ring: 0 0 0 3px #6ea8ff22;
+    --rebuild-bg: linear-gradient(135deg, #3567e255, #7c53ff44);
+    --rebuild-border: #40548f; --rebuild-hover: 0 2px 14px #6ea8ff33;
+    --banner-bg: #2c1c1e; --banner-border: #7a4040; --banner-text: #ffb9b9;
+    --detail: #c7d3ee; --data-bg: #0e1728; --sugg-bg: #101a2e; --code: #9fc0ff;
+    --scroll-thumb: #26345599;
+    --glow1: #16224a55; --glow2: #1a163855;
+    --graph-label: #dbe5f8; --graph-edge: #2e3f66; --graph-edge-opacity: 0.55;
+    --graph-hl-line: #6ea8ff; --graph-hl-border: #ffffff; --graph-hl-label: #ffffff;
+    --graph-elabel: #9db4e8;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; color: var(--text);
     font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     background:
-      radial-gradient(1200px 600px at 85% -10%, #16224a55, transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, #1a163855, transparent 60%),
+      radial-gradient(1200px 600px at 85% -10%, var(--glow1), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, var(--glow2), transparent 60%),
       var(--bg);
   }
   header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     padding: 12px 16px; border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, #111a2ecc, #10182899); backdrop-filter: blur(6px); }
+    background: var(--header-bg); backdrop-filter: blur(6px); }
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand .logo { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
     background: linear-gradient(135deg, var(--accent), var(--accent2)); font-size: 15px;
-    box-shadow: 0 2px 12px #6ea8ff44; }
+    box-shadow: var(--logo-shadow); }
   .brand h1 { font-size: 15.5px; margin: 0; letter-spacing: .01em; }
   .brand .sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
   #chips { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -42,15 +95,16 @@
     transition: border-color .15s, box-shadow .15s;
   }
   input[type="search"] { width: 210px; }
-  input[type="search"]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #6ea8ff22; }
+  input[type="search"]:focus, select:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
+  select option { background: var(--bg2); color: var(--text); }
   button { cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button:disabled { opacity: .55; cursor: wait; }
-  #rebuild { background: linear-gradient(135deg, #3567e255, #7c53ff44);
-    border-color: #40548f; font-weight: 600; }
-  #rebuild:not(:disabled):hover { box-shadow: 0 2px 14px #6ea8ff33; }
+  #rebuild { background: var(--rebuild-bg);
+    border-color: var(--rebuild-border); font-weight: 600; }
+  #rebuild:not(:disabled):hover { box-shadow: var(--rebuild-hover); }
   #banner { display: none; margin: 10px 16px 0; padding: 9px 13px; border-radius: 10px;
-    background: #2c1c1e; border: 1px solid #7a4040; color: #ffb9b9; font-size: 13px; }
+    background: var(--banner-bg); border: 1px solid var(--banner-border); color: var(--banner-text); font-size: 13px; }
   #filters { display: flex; gap: 7px; flex-wrap: wrap; align-items: center;
     padding: 9px 16px; border-bottom: 1px solid var(--border); }
   #filters label { display: flex; gap: 6px; align-items: center; font-size: 12px;
@@ -66,9 +120,9 @@
   #side h2 { font-size: 14.5px; margin: 2px 0 6px; word-break: break-word; }
   .typechip { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
     text-transform: uppercase; color: #0b101b; border-radius: 6px; padding: 2px 7px; }
-  #side .detail { font-size: 12.5px; color: #c7d3ee; margin: 8px 0 10px; white-space: pre-wrap; word-break: break-word; }
+  #side .detail { font-size: 12.5px; color: var(--detail); margin: 8px 0 10px; white-space: pre-wrap; word-break: break-word; }
   #side .data { font-size: 11px; color: var(--muted); white-space: pre-wrap; word-break: break-word;
-    background: #0e1728; border: 1px solid var(--border); border-radius: 9px; padding: 9px;
+    background: var(--data-bg); border: 1px solid var(--border); border-radius: 9px; padding: 9px;
     max-height: 200px; overflow: auto; }
   #side h3 { font-size: 11px; margin: 15px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
   #side .edge-item { font-size: 12.5px; padding: 5px 7px; border-radius: 7px; cursor: pointer;
@@ -81,16 +135,16 @@
   #sugg .count { font-size: 10.5px; background: var(--panel2); border: 1px solid var(--border);
     color: var(--muted); border-radius: 99px; padding: 1px 8px; }
   .sugg-item { font-size: 12px; border: 1px solid var(--border); border-left-width: 3px; border-radius: 9px;
-    padding: 8px 10px; margin-bottom: 7px; background: #101a2e; }
+    padding: 8px 10px; margin-bottom: 7px; background: var(--sugg-bg); }
   .sugg-item.alerte { border-left-color: #ff6b6b; }
   .sugg-item.alerte b::before { content: "⚠ "; }
   .sugg-item.info { border-left-color: #e3c86b; }
   .sugg-item.info b::before { content: "ℹ "; }
   .sugg-item b { display: block; margin-bottom: 2px; }
-  .sugg-item code { color: #9fc0ff; font-size: 10.5px; word-break: break-all; }
+  .sugg-item code { color: var(--code); font-size: 10.5px; word-break: break-all; }
   .hint { color: var(--muted); font-size: 12px; }
   ::-webkit-scrollbar { width: 9px; }
-  ::-webkit-scrollbar-thumb { background: #26345599; border-radius: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 9px; }
 </style>
 </head>
 <body>
@@ -142,6 +196,53 @@ function banner(msg) {
 }
 function nodeLabel(n) { return n.label || n.id; }
 
+// couleurs du graphe lues des variables CSS du thème courant (clair/sombre)
+function graphColors() {
+  const v = (n, dflt) => (getComputedStyle(document.documentElement).getPropertyValue(n) || "").trim() || dflt;
+  return {
+    label: v("--graph-label", "#dbe5f8"),
+    edge: v("--graph-edge", "#2e3f66"),
+    edgeOpacity: parseFloat(v("--graph-edge-opacity", "0.55")) || 0.55,
+    hlLine: v("--graph-hl-line", "#6ea8ff"),
+    hlBorder: v("--graph-hl-border", "#ffffff"),
+    hlLabel: v("--graph-hl-label", "#ffffff"),
+    edgeLabel: v("--graph-elabel", "#9db4e8"),
+  };
+}
+
+function cyStyle() {
+  const g = graphColors();
+  return [
+    { selector: "node", style: {
+      label: "data(label)", color: g.label,
+      "font-size": 8.5, "min-zoomed-font-size": 5,
+      "text-valign": "bottom", "text-margin-y": 5, "text-wrap": "ellipsis", "text-max-width": 95,
+      "background-color": "data(color)", "background-opacity": 0.22,
+      "border-width": 1.7, "border-color": "data(color)", "border-opacity": 0.95,
+      width: "data(size)", height: "data(size)",
+      "overlay-padding": 2, "active-bg-opacity": 0,
+    } },
+    { selector: "node.off", style: { opacity: 0.4, "border-style": "dashed" } },
+    { selector: "node:selected", style: { "border-width": 3, "border-color": g.hlBorder } },
+    { selector: "edge", style: {
+      width: "data(w)", "line-opacity": g.edgeOpacity,
+      "line-color": g.edge, "target-arrow-color": g.edge,
+      "curve-style": "bezier", "target-arrow-shape": "triangle", "arrow-scale": 0.65,
+      "loop-direction": 0, "loop-sweep": 20,
+    } },
+    { selector: "node.hl", style: {
+      "border-width": 3, "border-color": g.hlBorder, color: g.hlLabel,
+      "font-size": 11, "z-index": 99, "background-opacity": 0.55,
+    } },
+    { selector: "edge.hl", style: {
+      label: "data(kind)", "font-size": 7.5, color: g.edgeLabel, "text-rotation": "autorotate",
+      "line-color": g.hlLine, "target-arrow-color": g.hlLine,
+      "line-opacity": 1, width: 2.2, "z-index": 98,
+    } },
+    { selector: "node.dim, edge.dim", style: { opacity: 0.1 } },
+  ];
+}
+
 function renderChips() {
   const c = graph.counts || {};
   const el = document.getElementById("chips");
@@ -190,35 +291,7 @@ function buildCy() {
     elements: els,
     minZoom: 0.12, maxZoom: 2.5,
     wheelSensitivity: 0.22,
-    style: [
-      { selector: "node", style: {
-        label: "data(label)", color: "#dbe5f8",
-        "font-size": 8.5, "min-zoomed-font-size": 5,
-        "text-valign": "bottom", "text-margin-y": 5, "text-wrap": "ellipsis", "text-max-width": 95,
-        "background-color": "data(color)", "background-opacity": 0.22,
-        "border-width": 1.7, "border-color": "data(color)", "border-opacity": 0.95,
-        width: "data(size)", height: "data(size)",
-        "overlay-padding": 2, "active-bg-opacity": 0,
-      } },
-      { selector: "node.off", style: { opacity: 0.4, "border-style": "dashed" } },
-      { selector: "node:selected", style: { "border-width": 3, "border-color": "#ffffff" } },
-      { selector: "edge", style: {
-        width: "data(w)", "line-opacity": 0.55,
-        "line-color": "#2e3f66", "target-arrow-color": "#2e3f66",
-        "curve-style": "bezier", "target-arrow-shape": "triangle", "arrow-scale": 0.65,
-        "loop-direction": 0, "loop-sweep": 20,
-      } },
-      { selector: "node.hl", style: {
-        "border-width": 3, "border-color": "#ffffff", color: "#ffffff",
-        "font-size": 11, "z-index": 99, "background-opacity": 0.55,
-      } },
-      { selector: "edge.hl", style: {
-        label: "data(kind)", "font-size": 7.5, color: "#9db4e8", "text-rotation": "autorotate",
-        "line-color": "#6ea8ff", "target-arrow-color": "#6ea8ff",
-        "line-opacity": 1, width: 2.2, "z-index": 98,
-      } },
-      { selector: "node.dim, edge.dim", style: { opacity: 0.1 } },
-    ],
+    style: cyStyle(),
     layout: { name: "preset", fit: false },
   });
   runLayout(document.getElementById("layout").value);
@@ -373,6 +446,8 @@ async function rebuild() {
 
 document.getElementById("rebuild").addEventListener("click", rebuild);
 document.getElementById("layout").addEventListener("change", (e) => { runLayout(e.target.value); applyFilter(); });
+// bascule clair/sombre (préférence navigateur) : repeindre le graphe
+document.addEventListener("themechange", () => { if (cy && typeof cy.style === "function") cy.style(cyStyle()); });
 document.getElementById("q").addEventListener("input", (e) => {
   const q = e.target.value.trim().toLowerCase();
   if (!cy) return;

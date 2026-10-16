@@ -76,9 +76,13 @@ Bun.serve({
 
     if (path.startsWith("/static/")) {
       const name = path.replace("/static/", "").replace(/[^a-zA-Z0-9._-]/g, "");
-      const p = join(import.meta.dir, `ob-plugin-${PLUGIN_ID}-${name}`);
-      const p2 = join(import.meta.dir, name);
-      for (const f of [p, p2]) {
+      // payload installé : fichiers préfixés à côté du serveur ; checkout : libs dans server/vendor/
+      const candidates = [
+        join(import.meta.dir, `ob-plugin-${PLUGIN_ID}-${name}`),
+        join(import.meta.dir, name),
+        join(import.meta.dir, "vendor", name),
+      ];
+      for (const f of candidates) {
         if (existsSync(f)) {
           return new Response(readFileSync(f), {
             headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "max-age=300" },
