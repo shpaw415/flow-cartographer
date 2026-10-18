@@ -44,7 +44,18 @@ Aucune clé de coffre, aucun réglage requis.
 ## Développement
 
 ```sh
+bun run scripts/build-ui.ts     # inline les vendors cytoscape/dagre dans server/index.html (UI auto-contenue)
 bun run scripts/gen.ts          # régénère open-bot.plugin.json depuis tools/ + server/ + parts/
 ob-plugin validate ~/plugins-create/flow-cartographer
 ob-plugin install --path ~/plugins-create/flow-cartographer
+UI_PORT=$(ob-plugin page flow-cartographer | grep -oP '\d+(?=/)' | head -1) \
+UI_TOKEN=$(cat ~/.open-bot/pages/flow-cartographer.token) bun scripts/uitest.ts
 ```
+
+**Règle d'or UI** : `server/ui.src.html` est la source lisible (les vendors y
+sont référencés `./static/vendor-*.js`) ; `server/index.html`, généré par
+`build-ui.ts`, est le fichier livré — tout inline, aucun `<script src>`.
+Le bundler UI de l'install transforme les `<script src>` en
+`<script type="module">`, exécutés APRÈS les scripts classiques de la page :
+cytoscape n'y serait plus défini au moment du rendu (bug v0.1.3,
+« cytoscape is not defined »). Ne jamais réintroduire de `<script src>`.

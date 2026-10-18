@@ -73,17 +73,8 @@ Bun.serve({
       return htmlRes(process.env.OPEN_BOT_PAGE_UI || join(import.meta.dir, "index.html"));
     }
 
-    if (path.startsWith("/static/")) {
-      const name = path.replace("/static/", "").replace(/[^a-zA-Z0-9._-]/g, "");
-      // checkout : libs dans server/static/ (l'install figé inline tout dans le bundle)
-      const f = join(import.meta.dir, "static", name);
-      if (name && existsSync(f)) {
-        return new Response(readFileSync(f), {
-          headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "max-age=300" },
-        });
-      }
-      return jsonRes({ ok: false, erreur: "fichier statique introuvable : " + name }, 404);
-    }
+    // pas de route /static/ : l'UI est auto-contenue (vendors inlinés dans
+    // index.html par scripts/build-ui.ts) — le proxy dashboard ne sert que "/"
 
     if (!tokenOk(req)) return jsonRes({ ok: false, erreur: "accès refusé : token de page manquant ou invalide" }, 403);
 

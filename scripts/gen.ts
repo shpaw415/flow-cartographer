@@ -2,6 +2,7 @@
 // gen.ts — assemble open-bot.plugin.json depuis tools/, server/ et parts/.
 // Le contenu du tool est inliné dans le manifest (tools[].content) ; les files[]
 // pointent vers server/server.ts et server/index.html.
+// AVANT : bun scripts/build-ui.ts (inline les vendors dans server/index.html).
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +21,7 @@ const manifest = {
   $schema: "/home/agent/.config/opencode/skills/plugin/open-bot.plugin.schema.json",
   id: "flow-cartographer",
   name: "Cartographe de flux",
-  version: "0.1.3",
+  version: "0.1.4",
   description:
     "Carte des flux open-bot : analyse les cron-jobs, les skills (locales + OpenViking) et les plugins installés, puis affiche un nodegraph interactif — quand un cron s'exécute, quels outils il appelle, quels plugins il lit ou modifie, quelles mémoires il consulte. Requêtes who/what, suggestions de nettoyage, cron quotidien silencieux et personnalité Cartographe pour guider les modifications de chemins.",
   author: "shpaw415",
@@ -30,12 +31,10 @@ const manifest = {
   tools: [{ name: "flowcart", content: tool }],
   files: [
     { name: "server.ts", source: "server/server.ts", exec: true },
+    // UI auto-contenue : vendors déjà inlinés par scripts/build-ui.ts (règle d'or
+    // dashboard — un <script src> devient type="module" au bundling, exécuté
+    // après le code de page : bug « cytoscape is not defined » v0.1.3)
     { name: "index.html", source: "server/index.html", exec: false },
-    // libs vendues, inlinées dans le bundle UI au install (directive 2026-10-16)
-    { name: "vendor-cytoscape.js", source: "server/static/vendor-cytoscape.js", exec: false },
-    { name: "vendor-dagre.js", source: "server/static/vendor-dagre.js", exec: false },
-    { name: "vendor-cytoscape-dagre.js", source: "server/static/vendor-cytoscape-dagre.js", exec: false },
-    { name: "vendor-cytoscape-fcose.js", source: "server/static/vendor-cytoscape-fcose.js", exec: false },
   ],
   dashboard: {
     pages: { entry: "server.ts", ui: "server/index.html" },

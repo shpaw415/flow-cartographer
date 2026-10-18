@@ -6,7 +6,8 @@ import { readFileSync } from "node:fs";
 
 const PORT = process.env.UI_PORT || "4746";
 const BASE = `http://127.0.0.1:${PORT}`;
-const html = readFileSync(new URL("../server/index.html", import.meta.url).pathname, "utf-8");
+// UI_HTML : tester le VRAI artefact (ex. bundle marketplace reconstruit) au lieu du fichier repo
+const html = readFileSync(process.env.UI_HTML || new URL("../server/index.html", import.meta.url).pathname, "utf-8");
 
 const results: [string, boolean, string][] = [];
 function check(name: string, cond: boolean, info = "") {
@@ -15,14 +16,37 @@ function check(name: string, cond: boolean, info = "") {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// ---- scénario 0 : auto-contenu et ordre d'exécution correct (régression v0.1.3 :
+// les <script src> devenaient type="module" au bundling → exécutés APRÈS le code
+// de page → « cytoscape is not defined »). Toute sous-ressource externe est interdite.
+// NB : le bundler ajoute parfois un chunk externe VIDE (0 octet) en type=module —
+// il ne porte aucun code : inoffensif. Ce qui est interdit : un module avec du code.
+{
+  const srcRefs = (html.match(/<script src=/g) || []).length + (html.match(/<link rel="stylesheet"/g) || []).length;
+  check("zéro sous-ressource externe (script src / link css)", srcRefs === 0, `${srcRefs} trouvées`);
+  const modulesAvecCode = [...html.matchAll(/<script[^>]*type="module"[^>]*>([\s\S]*?)<\/script>/g)]
+    .filter((m) => m[1].trim().length > 0).length;
+  check("zéro module portant du code", modulesAvecCode === 0, `${modulesAvecCode} trouvés`);
+  check("4 vendors inline marqués", (html.match(/<script data-vendor=/g) || []).length === 4);
+  // le code de page doit vivre dans un script CLASSIQUE, pas un module
+  const mainAt = html.indexOf("const TYPES = {");
+  const openTag = html.lastIndexOf("<script", mainAt);
+  const tag = html.slice(openTag, html.indexOf(">", openTag));
+  check("code de page hors module", !/type="module"/.test(tag), tag);
+  const lastVendor = html.lastIndexOf("</script>", openTag);
+  check("vendors exécutés avant le code de page", lastVendor !== -1 && lastVendor < openTag);
+}
+
 async function boot(fetchImpl: any) {
   const win = new Window({ url: BASE + "/" });
   const doc = win.document;
   (win as any).fetch = fetchImpl;
   (doc as any).fetch = fetchImpl;
   doc.write(html);
-  // exécute le script inline comme un navigateur
-  const scripts = [...doc.querySelectorAll("script")].filter((s) => !s.getAttribute("src"));
+  // exécute les scripts inline SAUF les vendors [data-vendor] : le vrai cytoscape
+  // n'est pas rendable en happy-dom (canvas) — un stub minimal remplace, la
+  // présence réelle des vendors est couverte par le scénario 0 + le navigateur.
+  const scripts = [...doc.querySelectorAll("script")].filter((s) => !s.getAttribute("src") && !s.hasAttribute("data-vendor"));
   for (const s of scripts) {
     const code = s.textContent || "";
     // cytoscape est requis : stub minimal si absent (le CDN n'est pas joignable en happy-dom)
