@@ -6,8 +6,9 @@ import { readFileSync } from "node:fs";
 
 const PORT = process.env.UI_PORT || "4746";
 const BASE = `http://127.0.0.1:${PORT}`;
-// UI_HTML : tester le VRAI artefact (ex. bundle marketplace reconstruit) au lieu du fichier repo
-const html = readFileSync(process.env.UI_HTML || new URL("../server/index.html", import.meta.url).pathname, "utf-8");
+const source = readFileSync(new URL("../server/index.html", import.meta.url).pathname, "utf-8");
+// le VRAI artefact : le HTML assemblé servi par le serveur de page (vendors inline)
+const served = await (await fetch(BASE + "/")).text();
 
 const results: [string, boolean, string][] = [];
 function check(name: string, cond: boolean, info = "") {
@@ -16,28 +17,30 @@ function check(name: string, cond: boolean, info = "") {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// ---- scénario 0 : auto-contenu et ordre d'exécution correct (régression v0.1.3 :
-// les <script src> devenaient type="module" au bundling → exécutés APRÈS le code
-// de page → « cytoscape is not defined »). Toute sous-ressource externe est interdite.
-// NB : le bundler ajoute parfois un chunk externe VIDE (0 octet) en type=module —
-// il ne porte aucun code : inoffensif. Ce qui est interdit : un module avec du code.
+// ---- scénario 0 : structure (régression v0.1.3 : les <script src> devenaient
+// type="module" au bundling → exécutés APRÈS le code de page → « cytoscape is
+// not defined »). La SOURCE doit avoir 4 marqueurs et zéro sous-ressource ;
+// le HTML SERVI doit être auto-contenu, vendors inline avant le code de page.
 {
-  const srcRefs = (html.match(/<script src=/g) || []).length + (html.match(/<link rel="stylesheet"/g) || []).length;
-  check("zéro sous-ressource externe (script src / link css)", srcRefs === 0, `${srcRefs} trouvées`);
-  const modulesAvecCode = [...html.matchAll(/<script[^>]*type="module"[^>]*>([\s\S]*?)<\/script>/g)]
+  const srcRefs = (source.match(/<script src=/g) || []).length + (source.match(/<link rel="stylesheet"/g) || []).length;
+  check("source : zéro sous-ressource externe", srcRefs === 0, `${srcRefs} trouvées`);
+  check("source : 4 marqueurs VENDOR", (source.match(/<!--VENDOR:/g) || []).length === 4);
+  const srvRefs = (served.match(/<script src=/g) || []).length + (served.match(/<link rel="stylesheet"/g) || []).length;
+  check("servi : zéro sous-ressource externe", srvRefs === 0, `${srvRefs} trouvées`);
+  check("servi : 4 vendors inline, zéro marqueur restant",
+    (served.match(/<script data-vendor=/g) || []).length === 4 && !served.includes("<!--VENDOR:"));
+  const modulesAvecCode = [...served.matchAll(/<script[^>]*type="module"[^>]*>([\s\S]*?)<\/script>/g)]
     .filter((m) => m[1].trim().length > 0).length;
-  check("zéro module portant du code", modulesAvecCode === 0, `${modulesAvecCode} trouvés`);
-  check("4 vendors inline marqués", (html.match(/<script data-vendor=/g) || []).length === 4);
-  // le code de page doit vivre dans un script CLASSIQUE, pas un module
-  const mainAt = html.indexOf("const TYPES = {");
-  const openTag = html.lastIndexOf("<script", mainAt);
-  const tag = html.slice(openTag, html.indexOf(">", openTag));
-  check("code de page hors module", !/type="module"/.test(tag), tag);
-  const lastVendor = html.lastIndexOf("</script>", openTag);
-  check("vendors exécutés avant le code de page", lastVendor !== -1 && lastVendor < openTag);
+  check("servi : zéro module portant du code", modulesAvecCode === 0, `${modulesAvecCode} trouvés`);
+  const mainAt = served.indexOf("const TYPES = {");
+  const openTag = served.lastIndexOf("<script", mainAt);
+  const tag = served.slice(openTag, served.indexOf(">", openTag));
+  check("servi : code de page hors module", !/type="module"/.test(tag), tag);
+  const lastVendor = served.lastIndexOf("</script>", openTag);
+  check("servi : vendors exécutés avant le code de page", lastVendor !== -1 && lastVendor < openTag);
 }
 
-async function boot(fetchImpl: any) {
+async function boot(fetchImpl: any, html = served) {
   const win = new Window({ url: BASE + "/" });
   const doc = win.document;
   (win as any).fetch = fetchImpl;
@@ -121,6 +124,16 @@ async function boot(fetchImpl: any) {
   const b = doc.getElementById("banner");
   check("bannière d'erreur affichée si API ko", b.style.display === "block" && /Reconstruire|échec/i.test(b.textContent || ""), b.textContent);
   check("chips restent vides", doc.getElementById("chips").children.length === 0);
+}
+
+// ---- scénario 2bis : libs absentes (setup pas encore passé) → bannière claire
+{
+  const flagged = source.replace("</head>", "<script>window.__VENDOR_MISSING__=true;</script></head>");
+  const { doc } = await boot(async () => new Response("{}", { headers: { "content-type": "application/json" } }), flagged);
+  await (doc as any).defaultView.happyDOM?.waitUntilComplete?.();
+  await sleep(300);
+  const b = doc.getElementById("banner");
+  check("bannière « libs absentes » si setup pas passé", b.style.display === "block" && /ob-plugin setup flow-cartographer/.test(b.textContent || ""), b.textContent);
 }
 
 // ---- scénario 3 : build endpoint + refus sans token

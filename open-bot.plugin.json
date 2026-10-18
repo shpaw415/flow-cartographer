@@ -2,7 +2,7 @@
   "$schema": "/home/agent/.config/opencode/skills/plugin/open-bot.plugin.schema.json",
   "id": "flow-cartographer",
   "name": "Cartographe de flux",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Carte des flux open-bot : analyse les cron-jobs, les skills (locales + OpenViking) et les plugins installés, puis affiche un nodegraph interactif — quand un cron s'exécute, quels outils il appelle, quels plugins il lit ou modifie, quelles mémoires il consulte. Requêtes who/what, suggestions de nettoyage, cron quotidien silencieux et personnalité Cartographe pour guider les modifications de chemins.",
   "author": "shpaw415",
   "repo": "shpaw415/flow-cartographer",
@@ -33,6 +33,15 @@
       "exec": false
     }
   ],
+  "setup": {
+    "commands": [
+      "mkdir -p /home/agent/.open-bot/pages-data/flow-cartographer/vendor",
+      "curl -fsSL https://raw.githubusercontent.com/shpaw415/flow-cartographer/v0.1.5/server/static/vendor-cytoscape.js -o /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-cytoscape.js && echo '83e8c54a6bec655bfd81df07df605649c268af69aeca67a5ea2da54ea42dac81  /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-cytoscape.js' | sha256sum -c -",
+      "curl -fsSL https://raw.githubusercontent.com/shpaw415/flow-cartographer/v0.1.5/server/static/vendor-dagre.js -o /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-dagre.js && echo '62eb9787ccfdbdf4148d4d99d31dbf9ee4770eafee81e637d759b52aac22cd51  /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-dagre.js' | sha256sum -c -",
+      "curl -fsSL https://raw.githubusercontent.com/shpaw415/flow-cartographer/v0.1.5/server/static/vendor-cytoscape-dagre.js -o /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-cytoscape-dagre.js && echo 'c7416531f7501f4f047d6ad2f0665aa18c74704abdb2eddb962922e301d4e204  /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-cytoscape-dagre.js' | sha256sum -c -",
+      "curl -fsSL https://raw.githubusercontent.com/shpaw415/flow-cartographer/v0.1.5/server/static/vendor-cytoscape-fcose.js -o /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-cytoscape-fcose.js && echo '5b96abb25cb79ee5822ad703532d59ca8a7366eb97ebe3f71d3000a620f7ffb9  /home/agent/.open-bot/pages-data/flow-cartographer/vendor/vendor-cytoscape-fcose.js' | sha256sum -c -"
+    ]
+  },
   "dashboard": {
     "pages": {
       "entry": "server.ts",

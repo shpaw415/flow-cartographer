@@ -10,7 +10,43 @@ const PORT = Number(process.env.OPEN_BOT_PAGE_PORT || 4746);
 const TOKEN = process.env.OPEN_BOT_PAGE_TOKEN || "";
 const HOME = process.env.HOME || "/home/agent";
 const GRAPH_FILE = join(HOME, ".open-bot/pages-data", PLUGIN_ID, "graph.json");
+const VENDOR_DIR = join(HOME, ".open-bot/pages-data", PLUGIN_ID, "vendor");
 const TOOL = `/usr/local/bin/ob-plugin-${PLUGIN_ID}-flowcart`;
+const VENDORS = ["cytoscape", "dagre", "cytoscape-dagre", "cytoscape-fcose"];
+
+// Le document servi sur "/" doit rester auto-contenu (le proxy du dashboard ne
+// garantit que le document et les chemins api/ relatifs). Les libs sont hors
+// payload (fenêtre security-review marketplace) : le setup du plugin les
+// télécharge versionnées depuis le repo GitHub (checksum sha256), et chaque
+// <!--VENDOR:x--> du HTML est remplacé à la volée par le <script> inline.
+// Relecture à chaque requête : dès que le setup a écrit les fichiers, la page
+// suivante est complète — aucun redémarrage nécessaire.
+function assembleUi(html: string): string {
+  let missing = false;
+  for (const v of VENDORS) {
+    const marker = `<!--VENDOR:${v}-->`;
+    if (!html.includes(marker)) continue;
+    const f = join(VENDOR_DIR, `vendor-${v}.js`);
+    if (existsSync(f)) {
+      const code = readFileSync(f, "utf-8");
+      if (/<\/script/i.test(code) || /<!--/.test(code)) { missing = true; html = html.replace(marker, ""); continue; }
+      // fonction de remplacement : le code minifié contient des $& / $'
+      html = html.replace(marker, () => `<script data-vendor="${v}">\n${code}\n</script>`);
+    } else {
+      missing = true;
+      html = html.replace(marker, "");
+    }
+  }
+  if (missing) html = html.replace("</head>", "<script>window.__VENDOR_MISSING__=true;</script></head>");
+  return html;
+}
+
+function pageRes(): Response {
+  const uiPath = process.env.OPEN_BOT_PAGE_UI || join(import.meta.dir, "index.html");
+  return new Response(assembleUi(readFileSync(uiPath, "utf-8")), {
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
+  });
+}
 
 function jsonRes(obj: any, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -45,20 +81,9 @@ async function buildGraph(): Promise<any> {
   }
 }
 
-// le bundle UI figé arrive via OPEN_BOT_PAGE_UI (install marketplace) ;
-// le checkout local / preview importe index.html en direct (bun --hot).
-// Valeur statique : l'import HTML doit être résolu AVANT Bun.serve.
-const routes = process.env.OPEN_BOT_PAGE_UI
-  ? {
-      "/": () => htmlRes(process.env.OPEN_BOT_PAGE_UI as string),
-    }
-  : { "/": await import("./index.html").then((m) => m.default) };
-
-function htmlRes(path: string) {
-  return new Response(Bun.file(path), {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" },
-  });
-}
+// le checkout local / preview lit index.html sur disque (assembleur commun) ;
+// l'install figée marketplace passe le bundle via OPEN_BOT_PAGE_UI.
+const routes = { "/": () => pageRes() };
 
 Bun.serve({
   port: PORT,
@@ -70,7 +95,7 @@ Bun.serve({
     if (path === "/healthz") return new Response("ok");
 
     if (path === "/index.html") {
-      return htmlRes(process.env.OPEN_BOT_PAGE_UI || join(import.meta.dir, "index.html"));
+      return pageRes();
     }
 
     // pas de route /static/ : l'UI est auto-contenue (vendors inlinés dans
